@@ -1,5 +1,10 @@
 # Emit_Kimberlite_AR
 
+  copy entire file setup/hud.sh 
+  open Linux or termux and paste.
+
+then ⤵️
+
 cat << 'EOF' > fix_build.sh
 pkg install -y clang make python sqlite
 pip install --upgrade setuptools --break-system-packages
@@ -11,3 +16,7 @@ EOF
 ~/emit_cockpit $ cat << 'EOF' > deploy_emit.sh
 #!/usr/bin/env bash
 set -e
+
+
+
+
