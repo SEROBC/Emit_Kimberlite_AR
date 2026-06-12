@@ -1,6 +1,6 @@
 # Emit_Kimberlite_AR
 
-  copy entire file setup/hud.sh 
+  copy my entire file setup/hud.sh 
   open Linux or termux and paste.
 
 then ⤵️
