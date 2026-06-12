@@ -5,18 +5,39 @@
 
 then ⤵️
 
-cat << 'EOF' > fix_build.sh
-pkg install -y clang make python sqlite
-pip install --upgrade setuptools --break-system-packages
-rm -rf node_modules package-lock.json ~/.cache/node-gyp
-npm install express ws --no-audit --no-fund
-npm install sqlite3 --no-audit --no-fund --build-from-source
-EOF
 
-~/emit_cockpit $ cat << 'EOF' > deploy_emit.sh
+
+cat << 'EOF' > deploy_emit.sh
 #!/usr/bin/env bash
 set -e
 
+echo "=== 🚀 1. INSTALLING SYSTEM DEPENDENCIES ==="
+pkg install -y clang make python sqlite
+
+echo "=== 🐍 2. UPGRADING PYTHON SETUPTOOLS (DISTUTILS SHIM) ==="
+pip install --upgrade setuptools --break-system-packages
+
+echo "=== 🧹 3. PURGING CORRUPTED BUILD ARTIFACTS & CACHES ==="
+rm -rf node_modules package-lock.json ~/.cache/node-gyp
+
+echo "=== 📦 4. INSTALLING CORE DEPENDENCIES ==="
+npm install express ws --no-audit --no-fund
+
+echo "=== 💾 5. INITIALIZING SQLITE3 BUILD ==="
+# Allow install to run and capture the pending script approval state
+npm install sqlite3 --no-audit --no-fund --build-from-source || true
+
+echo "=== ✅ 6. APPROVING PENDING LIFECYCLE SCRIPTS ==="
+npm approve-scripts --all
+
+echo "=== 🔨 7. COMPILING NATIVE BINARIES FROM SOURCE ==="
+npm rebuild sqlite3 --build-from-source
+
+echo "=== 🟢 8. LAUNCHING BACKEND ENGINE ==="
+node index.cjs
+
+EOF
+bash deploy_emit.sh
 
 
 
