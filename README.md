@@ -1,3 +1,17 @@
+Geological_Tool Addition 64 ⤵️ 
+
+
+
+#64
+Mobile Spectroscopic Mapping & G-Color Diamond Acquisition ModuleThis module integrates the Google Pixel 9a Tensor G4 NPU and multi-camera RAW Bayer array to deploy an on-device computational hyperspectral imager. Natural G-color diamonds (near-colorless, Type Ia) feature specific trace nitrogen aggregate absorption profiles (notably the 415 nm N3 optical center) and an extreme refractive index ($n = 2.417$).By bypassing compressed camera pipelines, the Pixel 9a captures RAW multi-frame exposures under the LED strobe, parsing the raw sensor data via custom C++ JNI / WebAssembly routines compiled directly on the device.
+
+
+
+
+
+
+
+
 # Emit_Kimberlite_AR
 
   copy my entire file setup/hud.sh 
