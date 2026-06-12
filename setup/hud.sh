@@ -233,36 +233,91 @@ cat << 'EOF' > public/index.html
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NASA EMIT Cockpit Avionics</title>
     <style>
-        body { margin: 0; background: #010103; color: #00ffaa; font-family: 'Courier New', monospace; overflow: hidden; }
+        body { margin: 0; background: #010103; color: #00ffaa; font-family: 'Courier New', monospace; overflow: hidden; user-select: none; }
         #targeting-grid { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; border: 2px solid rgba(0, 255, 170, 0.15); box-sizing: border-box; }
         #reticle { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 80px; height: 80px; border: 2px dashed rgba(0,255,170,0.4); border-radius: 50%; }
         #reticle::after { content: ''; position: absolute; top: 50%; left: 50%; width: 6px; height: 6px; background: #00ffaa; border-radius: 50%; transform: translate(-50%, -50%); }
-        .panel { position: absolute; background: rgba(1, 4, 8, 0.95); border: 1px solid #00ffaa; padding: 14px; border-radius: 2px; box-shadow: 0 0 30px rgba(0,255,170,0.25); }
-        #panel-left { top: 20px; left: 20px; width: 320px; }
-        #panel-right { top: 20px; right: 20px; width: 280px; }
+        
+        /* --- ADD-ON 17: Structural Layout & Tab Navigation --- */
+        .panel { position: absolute; background: rgba(1, 4, 8, 0.95); border: 1px solid #00ffaa; padding: 14px; border-radius: 2px; box-shadow: 0 0 30px rgba(0,255,170,0.25); z-index: 10; }
+        #panel-left { top: 70px; left: 20px; width: 320px; }
+        #panel-right { top: 70px; right: 20px; width: 300px; }
         #panel-bottom { bottom: 20px; left: 20px; width: 360px; }
-        button { background: #010408; border: 1px solid #00ffaa; color: #00ffaa; padding: 6px 12px; font-family: monospace; cursor: pointer; margin-right: 5px; }
+        #panel-radar { bottom: 20px; right: 20px; width: 300px; height: 260px; }
+        
+        .tab-bar { position: absolute; top: 15px; left: 20px; display: flex; gap: 10px; z-index: 20; }
+        .tab-btn { background: #010408; border: 1px solid rgba(0,255,170,0.4); color: rgba(0,255,170,0.6); padding: 6px 16px; cursor: pointer; font-family: monospace; font-weight: bold; }
+        .tab-btn.active { border-color: #00ffaa; color: #00ffaa; box-shadow: 0 0 10px rgba(0,255,170,0.2); }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        button { background: #010408; border: 1px solid #00ffaa; color: #00ffaa; padding: 6px 12px; font-family: monospace; cursor: pointer; margin-right: 5px; margin-top: 5px; }
         button:hover { background: #00ffaa; color: #010408; }
+        hr { border: 0; border-top: 1px solid rgba(0, 255, 170, 0.3); margin: 10px 0; }
+        .meta-stat { font-size: 0.85em; color: #00aa77; }
+        
+        /* --- ADD-ON 18: SVG Blip Radar styling --- */
+        #radar-display { width: 100%; height: 200px; background: #02080c; border: 1px solid rgba(0,255,170,0.2); }
+        .radar-sweep { transform-origin: 150px 100px; animation: sweep 4s linear infinite; stroke: rgba(0,255,170,0.15); }
+        @keyframes sweep { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
     <div id="targeting-grid"></div>
     <div id="reticle"></div>
 
-    <div id="panel-left" class="panel">
-        <h3>📡 TELEMETRY CORE</h3>
-        <hr/>
-        <p>AZIMUTH (α): <span id="val-alpha">0.00</span>°</p>
-        <p>ELEVATION (β): <span id="val-beta">0.00</span>°</p>
-        <p>TILT (γ): <span id="val-gamma">0.00</span>°</p>
+    <div class="tab-bar">
+        <button class="tab-btn active" onclick="switchTab('avionics')">AVIONICS HUD</button>
+        <button class="tab-btn" onclick="switchTab('diagnostics')">DIAGNOSTICS & SYSTEM</button>
     </div>
 
-    <div id="panel-right" class="panel">
-        <h3>🔬 SPECTRAL MATCH</h3>
-        <hr/>
-        <p>MINERAL: <span id="m-name" style="font-weight:bold;">Void</span></p>
-        <p>FORMULA: <span id="m-form">-</span></p>
-        <p>CONFIDENCE: <span id="m-conf">0.0</span>%</p>
+    <div id="avionics-tab" class="tab-content active">
+        <div id="panel-left" class="panel">
+            <h3>📡 TELEMETRY CORE</h3>
+            <hr/>
+            <p>AZIMUTH (α): <span id="val-alpha">0.00</span>°</p>
+            <p>ELEVATION (β): <span id="val-beta">0.00</span>°</p>
+            <p>TILT (γ): <span id="val-gamma">0.00</span>°</p>
+            <div class="meta-stat" id="gps-coords">GPS: Projecting coordinate matrix...</div>
+        </div>
+
+        <div id="panel-right" class="panel">
+            <h3>🔬 SPECTRAL MATCH</h3>
+            <hr/>
+            <p>MINERAL: <span id="m-name" style="font-weight:bold;">Void</span></p>
+            <p>FORMULA: <span id="m-form">-</span></p>
+            <p>CONFIDENCE: <span id="m-conf">0.0</span>%</p>
+            <div class="meta-stat" id="target-status">STATUS: SCANNING TRACK</div>
+        </div>
+
+        <div id="panel-radar" class="panel">
+            <h3>🧭 SPATIAL DISTRO RADAR</h3>
+            <hr/>
+            <svg id="radar-display">
+                <circle cx="150" cy="100" r="30" fill="none" stroke="rgba(0,255,170,0.15)" stroke-dasharray="2,2"/>
+                <circle cx="150" cy="100" r="60" fill="none" stroke="rgba(0,255,170,0.15)" stroke-dasharray="2,2"/>
+                <circle cx="150" cy="100" r="90" fill="none" stroke="rgba(0,255,170,0.2)"/>
+                <line x1="150" y1="5" x2="150" y2="195" stroke="rgba(0,255,170,0.15)"/>
+                <line x1="5" y1="100" x2="295" y2="100" stroke="rgba(0,255,170,0.15)"/>
+                <line x1="150" y1="100" x2="240" y2="100" class="radar-sweep" stroke-width="2"/>
+                <g id="radar-blips"></g>
+            </svg>
+        </div>
+    </div>
+
+    <div id="diagnostics-tab" class="tab-content">
+        <div style="margin: 80px 20px; max-width: 600px;" class="panel">
+            <h3>🛠️ CORE DIAGNOSTICS & SYSTEM TUNING</h3>
+            <hr/>
+            <p>ENGINE HEALTH STATUS: <span id="diag-status" style="color:#ff3333">OFFLINE</span></p>
+            <p>SERVER UPTIME RUNNING: <span id="diag-uptime">0</span>s</p>
+            <p>CALIBRATION SMOOTHING BUFFER: <span id="diag-buffer">0/5</span> items</p>
+            <hr/>
+            <h4>🛰️ SIMULATION FLIGHT INJECTOR</h4>
+            <p class="meta-stat">Emulates live raw instrument streams when executing code on headless Termux containers.</p>
+            <button onclick="toggleSimulation()" id="sim-btn" style="border-color:#ffcc00; color:#ffcc00;">ENGAGE HARDWARE SIMULATOR</button>
+            <button onclick="clearSystemLogs()" style="border-color:#ff3333; color:#ff3333;">WIPE SQL & FLAT LOGS</button>
+        </div>
     </div>
 
     <div id="panel-bottom" class="panel">
@@ -274,29 +329,107 @@ cat << 'EOF' > public/index.html
 
     <script>
         const ws = new WebSocket(`ws://${window.location.host}`);
+        let simulationInterval = null;
+
+        // --- ADD-ON 17: Tab Routing Engine ---
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById(`${tabId}-tab`).classList.add('active');
+            event.target.classList.add('active');
+            if(tabId === 'diagnostics') fetchDiagnostics();
+        }
+
         ws.onmessage = (event) => {
             const data = JSON.parse(event.data);
             document.getElementById('val-alpha').innerText = data.alpha.toFixed(2);
             document.getElementById('val-beta').innerText = data.beta.toFixed(2);
             document.getElementById('val-gamma').innerText = data.gamma.toFixed(2);
+            document.getElementById('gps-coords').innerText = `GPS: ${data.gps.lat.toFixed(5)}°N, ${data.gps.lon.toFixed(5)}°W`;
             
             if (data.match) {
                 document.getElementById('m-name').innerText = data.match.name;
                 document.getElementById('m-name').style.color = data.match.color;
                 document.getElementById('m-form').innerText = data.match.formula;
                 document.getElementById('m-conf').innerText = data.match.confidence;
+                document.getElementById('target-status').innerText = `TARGET FIXED: ${data.match.name.toUpperCase()}`;
+                
+                // --- ADD-ON 18: Radar Vector Spot Positioning Plotting ---
+                plotRadarBlip(data.alpha, data.beta, data.match.color);
             } else {
                 document.getElementById('m-name').innerText = "Void";
                 document.getElementById('m-name').style.color = "#00ffaa";
                 document.getElementById('m-form').innerText = "-";
                 document.getElementById('m-conf').innerText = "0.0";
+                document.getElementById('target-status').innerText = "STATUS: SEARCHING INTERSECTIONS";
             }
         };
+
+        // --- ADD-ON 18: Dynamic SVG Scale Projections ---
+        function plotRadarBlip(alpha, beta, color) {
+            const blipGroup = document.getElementById('radar-blips');
+            // Project alpha to 0-360 mapped wrapping bounds, beta to radius
+            const angle = (alpha % 360) * (Math.PI / 180);
+            const radius = Math.min(90, Math.abs(beta - 40) * 2); // Center localized view offset around target zones
+            
+            const x = 150 + radius * Math.cos(angle);
+            const y = 100 + radius * Math.sin(angle);
+
+            const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+            circle.setAttribute("cx", x);
+            circle.setAttribute("cy", y);
+            circle.setAttribute("r", "4");
+            circle.setAttribute("fill", color);
+            circle.setAttribute("opacity", "0.9");
+            
+            blipGroup.appendChild(circle);
+            if (blipGroup.children.length > 20) blipGroup.removeChild(blipGroup.firstChild);
+        }
+
+        // --- ADD-ON 19: Hardware Emulation Streaming Layer Engine ---
+        function toggleSimulation() {
+            const btn = document.getElementById('sim-btn');
+            if (simulationInterval) {
+                clearInterval(simulationInterval);
+                simulationInterval = null;
+                btn.innerText = "ENGAGE HARDWARE SIMULATOR";
+                btn.style.color = "#ffcc00";
+                btn.style.borderColor = "#ffcc00";
+            } else {
+                btn.innerText = "HALT SIMULATOR LOOPS";
+                btn.style.color = "#ff3333";
+                btn.style.borderColor = "#ff3333";
+                
+                simulationInterval = setInterval(() => {
+                    // Generate pseudo-random walks across the mineral coordinate matrices
+                    const dice = Math.random();
+                    let alpha = 0, beta = 0;
+                    
+                    if (dice < 0.2) { alpha = 25 + Math.random() * 10; beta = 50 + Math.random() * 10; } // Gold bounds
+                    else if (dice < 0.4) { alpha = 60 + Math.random() * 40; beta = 15 + Math.random() * 20; } // Hematite
+                    else { alpha = Math.random() * 360; beta = Math.random() * 90; } // Empty Spaced Void Mapping
+
+                    fetch('/api/telemetry/ingest', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ alpha, beta, gamma: Math.random() * 5 })
+                    });
+                }, 800);
+            }
+        }
+
+        function fetchDiagnostics() {
+            fetch('/api/health')
+                .then(res => res.json())
+                .then(data => {
+                    const statusEl = document.getElementById('diag-status');
+                    statusEl.innerText = data.status.toUpperCase();
+                    statusEl.style.color = data.status === "online" ? "#00ffaa" : "#ff3333";
+                    document.getElementById('diag-uptime').innerText = Math.floor(data.uptime);
+                    document.getElementById('diag-buffer').innerText = `${data.buffer_depth}/${data.window_limit}`;
+                });
+        }
     </script>
 </body>
 </html>
 EOF
-
-echo "=== ✅ INSTALLED COMPLETED SUCCESSFULLY ==="
-echo "To start your telemetry server run:"
-echo "  cd ~/hud && node index.cjs"
